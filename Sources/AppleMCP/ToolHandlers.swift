@@ -53,6 +53,42 @@ enum ToolHandlers {
                 let results = try MessagesDB.searchMessages(query: query, limit: limit)
                 return JSONHelpers.jsonResult(results)
 
+            case "reminders_list_lists":
+                let lists = try await RemindersService.listLists()
+                return JSONHelpers.jsonResult(lists)
+
+            case "reminders_list":
+                let statusRaw = JSONHelpers.string(arguments, "status") ?? "incomplete"
+                let status = ReminderStatus(rawValue: statusRaw.lowercased()) ?? .incomplete
+                let reminders = try await RemindersService.listReminders(
+                    listName: JSONHelpers.string(arguments, "list"),
+                    status: status,
+                    dueAfter: JSONHelpers.date(arguments, "due_after"),
+                    dueBefore: JSONHelpers.date(arguments, "due_before"),
+                    limit: JSONHelpers.int(arguments, "limit") ?? 50
+                )
+                return JSONHelpers.jsonResult(reminders)
+
+            case "reminders_create":
+                guard let title = JSONHelpers.string(arguments, "title"), !title.isEmpty else {
+                    return JSONHelpers.errorResult("title is required")
+                }
+                let created = try await RemindersService.createReminder(
+                    title: title,
+                    listName: JSONHelpers.string(arguments, "list"),
+                    dueDate: JSONHelpers.date(arguments, "due"),
+                    notes: JSONHelpers.string(arguments, "notes"),
+                    priority: JSONHelpers.int(arguments, "priority")
+                )
+                return JSONHelpers.jsonResult(created)
+
+            case "reminders_complete":
+                guard let id = JSONHelpers.string(arguments, "id"), !id.isEmpty else {
+                    return JSONHelpers.errorResult("id is required")
+                }
+                let result = try await RemindersService.completeReminder(id: id)
+                return JSONHelpers.jsonResult(result)
+
             case "messages_send":
                 guard let recipient = JSONHelpers.string(arguments, "recipient"), !recipient.isEmpty,
                       let body = JSONHelpers.string(arguments, "body"), !body.isEmpty else {

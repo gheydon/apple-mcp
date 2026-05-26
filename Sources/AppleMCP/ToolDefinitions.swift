@@ -122,6 +122,88 @@ enum ToolDefinitions {
                 ])
             ),
             Tool(
+                name: "reminders_list_lists",
+                description: "List all reminder lists (Reminders app calendars of type .reminder).",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([:]),
+                    "additionalProperties": .bool(false)
+                ])
+            ),
+            Tool(
+                name: "reminders_list",
+                description: "List reminders. By default returns incomplete reminders across all lists.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "list": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional reminder list title or identifier.")
+                        ]),
+                        "status": .object([
+                            "type": .string("string"),
+                            "description": .string("One of: incomplete (default), completed, all.")
+                        ]),
+                        "due_after": .object([
+                            "type": .string("string"),
+                            "description": .string("ISO 8601 lower bound. For status=completed this is the completion date lower bound.")
+                        ]),
+                        "due_before": .object([
+                            "type": .string("string"),
+                            "description": .string("ISO 8601 upper bound. For status=completed this is the completion date upper bound.")
+                        ]),
+                        "limit": .object([
+                            "type": .string("integer"),
+                            "description": .string("Maximum number of reminders to return. Default 50.")
+                        ])
+                    ])
+                ])
+            ),
+            Tool(
+                name: "reminders_create",
+                description: "Create a new reminder.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "title": .object([
+                            "type": .string("string"),
+                            "description": .string("Reminder title.")
+                        ]),
+                        "list": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional reminder list title or identifier. Defaults to the system default list.")
+                        ]),
+                        "due": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional ISO 8601 due date/time.")
+                        ]),
+                        "notes": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional notes.")
+                        ]),
+                        "priority": .object([
+                            "type": .string("integer"),
+                            "description": .string("0=none, 1=high, 5=medium, 9=low. Default 0.")
+                        ])
+                    ]),
+                    "required": .array([.string("title")])
+                ])
+            ),
+            Tool(
+                name: "reminders_complete",
+                description: "Mark a reminder as completed by its identifier.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "id": .object([
+                            "type": .string("string"),
+                            "description": .string("calendarItemIdentifier from reminders_list or reminders_create.")
+                        ])
+                    ]),
+                    "required": .array([.string("id")])
+                ])
+            ),
+            Tool(
                 name: "messages_send",
                 description: "Send a message via the Messages app. Requires Automation permission to control Messages.",
                 inputSchema: .object([
