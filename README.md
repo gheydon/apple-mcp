@@ -76,4 +76,4 @@ macOS will prompt for these the first time each tool is used:
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GPL-2.0 — see [LICENSE](LICENSE).
