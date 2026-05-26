@@ -34,6 +34,32 @@ enum ToolHandlers {
                 )
                 return JSONHelpers.jsonResult(created)
 
+            case "contacts_search":
+                guard let query = JSONHelpers.string(arguments, "query"), !query.isEmpty else {
+                    return JSONHelpers.errorResult("query is required")
+                }
+                let limit = JSONHelpers.int(arguments, "limit") ?? 20
+                let results = try await ContactsService.search(query: query, limit: limit)
+                return JSONHelpers.jsonResult(results)
+
+            case "contacts_create":
+                let given = JSONHelpers.string(arguments, "given_name")
+                let family = JSONHelpers.string(arguments, "family_name")
+                let org = JSONHelpers.string(arguments, "organization")
+                if (given ?? "").isEmpty && (family ?? "").isEmpty && (org ?? "").isEmpty {
+                    return JSONHelpers.errorResult("At least one of given_name, family_name, or organization is required")
+                }
+                let phones = (arguments?["phones"]?.arrayValue ?? []).compactMap { $0.stringValue }
+                let emails = (arguments?["emails"]?.arrayValue ?? []).compactMap { $0.stringValue }
+                let created = try await ContactsService.createContact(
+                    givenName: given,
+                    familyName: family,
+                    organization: org,
+                    phones: phones,
+                    emails: emails
+                )
+                return JSONHelpers.jsonResult(created)
+
             case "messages_list_chats":
                 let limit = JSONHelpers.int(arguments, "limit") ?? 20
                 let chats = try MessagesDB.listChats(limit: limit)

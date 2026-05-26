@@ -74,6 +74,55 @@ enum ToolDefinitions {
                 ])
             ),
             Tool(
+                name: "contacts_search",
+                description: "Search contacts by name, email, or phone number. Returns up to `limit` matches.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "query": .object([
+                            "type": .string("string"),
+                            "description": .string("Name, email, or phone number to search for.")
+                        ]),
+                        "limit": .object([
+                            "type": .string("integer"),
+                            "description": .string("Maximum number of contacts to return. Default 20.")
+                        ])
+                    ]),
+                    "required": .array([.string("query")])
+                ])
+            ),
+            Tool(
+                name: "contacts_create",
+                description: "Create a new contact. At least one of given_name, family_name, or organization is required.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "given_name": .object([
+                            "type": .string("string"),
+                            "description": .string("First name.")
+                        ]),
+                        "family_name": .object([
+                            "type": .string("string"),
+                            "description": .string("Last name.")
+                        ]),
+                        "organization": .object([
+                            "type": .string("string"),
+                            "description": .string("Company or organization name.")
+                        ]),
+                        "phones": .object([
+                            "type": .string("array"),
+                            "description": .string("Phone numbers as strings."),
+                            "items": .object(["type": .string("string")])
+                        ]),
+                        "emails": .object([
+                            "type": .string("array"),
+                            "description": .string("Email addresses as strings."),
+                            "items": .object(["type": .string("string")])
+                        ])
+                    ])
+                ])
+            ),
+            Tool(
                 name: "messages_list_chats",
                 description: "List recent iMessage/SMS chats from ~/Library/Messages/chat.db. Requires Full Disk Access for the host process.",
                 inputSchema: .object([
