@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
-# Build a signed universal (arm64 + x86_64) release binary and package it.
+# Build a signed (and optionally notarized) universal release binary and
+# package it for upload to GitHub releases.
 #
 # Usage:
 #   scripts/release.sh [version]
 #
 # Environment:
-#   CODESIGN_IDENTITY  Hash or common-name of a code-signing identity in your
-#                      keychain. If unset, the script picks the first one
-#                      `security find-identity -v -p codesigning` returns.
-#                      Set to "-" to ad-hoc sign (no developer identity).
+#   CODESIGN_IDENTITY   Hash or common-name of a code-signing identity in your
+#                       keychain. If unset, the script prefers a
+#                       "Developer ID Application" identity, falling back to
+#                       any available codesigning identity. Set to "-" to
+#                       ad-hoc sign.
+#
+#   NOTARY_PROFILE      Name of a keychain profile stored via
+#                       `xcrun notarytool store-credentials`. If set, the
+#                       script will submit the signed binary for notarization
+#                       and wait for the verdict. If unset, notarization is
+#                       skipped.
 #
 # Output:
-#   dist/apple-mcp                       — the signed universal binary
+#   dist/apple-mcp                        — the signed (and notarized) universal binary
 #   dist/apple-mcp-<version>-macos.tar.gz — the tarball uploaded to releases
 
 set -euo pipefail
@@ -36,17 +44,38 @@ cp "$SRC" dist/apple-mcp
 echo ">> Architectures:"
 lipo -info dist/apple-mcp
 
+# Pick a code-signing identity.
 IDENTITY="${CODESIGN_IDENTITY:-}"
 if [ -z "$IDENTITY" ]; then
-    IDENTITY=$(security find-identity -v -p codesigning | awk -F'"' 'NR==1 && /1\)/ {print $2}')
+    IDENTITY=$(security find-identity -v -p codesigning \
+        | awk -F'"' '/"Developer ID Application:/ {print $2; exit}')
+fi
+if [ -z "$IDENTITY" ]; then
+    IDENTITY=$(security find-identity -v -p codesigning \
+        | awk -F'"' 'NR==1 && /^[[:space:]]*1\)/ {print $2}')
 fi
 
 if [ -n "$IDENTITY" ]; then
     echo ">> Signing with: $IDENTITY"
-    codesign --force --sign "$IDENTITY" --options runtime --timestamp dist/apple-mcp
-    codesign --verify --verbose dist/apple-mcp
+    codesign --force --options runtime --timestamp --sign "$IDENTITY" dist/apple-mcp
+    codesign --verify --verbose=2 dist/apple-mcp
 else
     echo "!! No codesigning identity found; skipping signature."
+fi
+
+# Notarize if a profile is configured.
+if [ -n "${NOTARY_PROFILE:-}" ]; then
+    echo ">> Notarizing via keychain profile: $NOTARY_PROFILE"
+    NOTARIZE_ZIP="dist/apple-mcp-notarize.zip"
+    rm -f "$NOTARIZE_ZIP"
+    ditto -c -k --keepParent dist/apple-mcp "$NOTARIZE_ZIP"
+    xcrun notarytool submit "$NOTARIZE_ZIP" \
+        --keychain-profile "$NOTARY_PROFILE" \
+        --wait
+    rm -f "$NOTARIZE_ZIP"
+    echo ">> Notarization complete."
+else
+    echo "!! NOTARY_PROFILE not set; skipping notarization."
 fi
 
 TARBALL="dist/apple-mcp-${VERSION}-macos.tar.gz"

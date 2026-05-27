@@ -6,7 +6,7 @@ struct AppleMCPMain {
     static func main() async throws {
         let server = Server(
             name: "apple-mcp",
-            version: "0.1.0",
+            version: "0.1.1",
             capabilities: .init(
                 tools: .init(listChanged: false)
             )
