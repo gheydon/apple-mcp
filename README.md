@@ -59,7 +59,33 @@ The binary lands at `.build/release/apple-mcp`.
 
 ## Wire into Claude Code / Claude Desktop
 
-Add to your MCP host config (`claude_desktop_config.json` or `~/.claude.json`):
+### Automatic (recommended)
+
+After installing, run:
+
+```sh
+apple-mcp register
+```
+
+It detects which MCP hosts you have installed (Claude Desktop, Claude Code),
+prints what it would change, asks for confirmation per host, and adds an
+`apple` entry to each `mcpServers` block pointing at the running binary.
+Existing entries for other MCP servers are preserved; the prior config is
+backed up to `<config>.bak`.
+
+Flags:
+
+- `--host claude-desktop|claude-code` — target only one host
+- `--yes` / `-y` — non-interactive; assume yes
+- `--path <path>` — register a specific binary location instead of the
+  running executable
+
+To remove the entry later, run `apple-mcp unregister` (same flags apply).
+
+### Manual
+
+If you'd rather edit the config yourself, add to your MCP host config
+(`claude_desktop_config.json` or `~/.claude.json`):
 
 ```json
 {
