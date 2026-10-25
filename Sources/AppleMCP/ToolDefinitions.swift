@@ -132,14 +132,58 @@ enum ToolDefinitions {
                 ])
             ),
             Tool(
+                name: "photos_list_people",
+                description: "List named people recognized by Photos, with identity IDs and counts of visible, non-deleted assets. Requires full Photos access and read access to the system Photos database (may require Full Disk Access).",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "query": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional case- and diacritic-insensitive substring of a name or identity ID.")
+                        ]),
+                        "limit": .object([
+                            "type": .string("integer"),
+                            "description": .string("Maximum identities to return. Default 100.")
+                        ])
+                    ]),
+                    "additionalProperties": .bool(false)
+                ])
+            ),
+            Tool(
+                name: "photos_list_pets",
+                description: "List named pets recognized by Photos, with identity IDs and counts of visible, non-deleted assets. Requires full Photos access and read access to the system Photos database (may require Full Disk Access).",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "query": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional case- and diacritic-insensitive substring of a name or identity ID.")
+                        ]),
+                        "limit": .object([
+                            "type": .string("integer"),
+                            "description": .string("Maximum identities to return. Default 100.")
+                        ])
+                    ]),
+                    "additionalProperties": .bool(false)
+                ])
+            ),
+            Tool(
                 name: "photos_search",
-                description: "Search photos and videos by date range, favorites, media type, and/or album. Returns metadata.",
+                description: "Search photos and videos by date range, favorites, media type, album, recognized person, and/or recognized pet. All supplied filters must match. Returns metadata. People/pet filters require full Photos access and read access to the system Photos database (may require Full Disk Access).",
                 inputSchema: .object([
                     "type": .string("object"),
                     "properties": .object([
                         "album_id": .object([
                             "type": .string("string"),
                             "description": .string("Optional album localIdentifier (from photos_list_albums) to restrict the query.")
+                        ]),
+                        "person": .object([
+                            "type": .string("string"),
+                            "description": .string("Exact full name, display name, or identity ID from photos_list_people. Case- and diacritic-insensitive. Duplicate names match any corresponding person; use an ID to disambiguate.")
+                        ]),
+                        "pet": .object([
+                            "type": .string("string"),
+                            "description": .string("Exact name, display name, or identity ID from photos_list_pets. Case- and diacritic-insensitive. Duplicate names match any corresponding pet; use an ID to disambiguate.")
                         ]),
                         "after": .object([
                             "type": .string("string"),

@@ -53,13 +53,33 @@ The binary lands at `.build/release/apple-mcp`.
 | `contacts_search` | Search contacts by name, phone or email; returns phones, emails, addresses, URLs, birthday |
 | `contacts_create` | Create a new contact |
 | `photos_list_albums` | List user-created and non-empty smart albums |
-| `photos_search` | Filter photos by date range, favorites, media type, and/or album |
+| `photos_list_people` | List named people recognized by Photos, with IDs and asset counts |
+| `photos_list_pets` | List named pets recognized by Photos, with IDs and asset counts |
+| `photos_search` | Filter photos by date range, favorites, media type, album, person, and/or pet |
 | `photos_export` | Save a full-resolution photo or video to disk |
 | `photos_view` | Return a downsized JPEG of an image asset as inline image content |
 | `messages_list_chats` | List recent iMessage/SMS chats |
 | `messages_recent` | Recent messages, optionally per chat |
 | `messages_search` | Substring search over the `text` column |
 | `messages_send` | Send a message via Messages.app |
+
+### People and pets
+
+`photos_list_people` and `photos_list_pets` return each named identity's `id`,
+`name`, `display_name`, `kind`, and `photo_count`, optionally filtered by a
+`query` substring. Pass a name or `id` to `photos_search`:
+
+```json
+{"person": "Alex Smith", "pet": "Milo", "after": "2026-01-01", "limit": 20}
+```
+
+Names match exactly, ignoring case and diacritics; duplicate names match every
+identity with that name. Combining `person` and `pet` returns assets containing
+both, and `limit` applies after filtering. Photos must already have recognized
+and named the person or pet.
+
+These tools read the System Photo Library's SQLite database (read-only), so
+they need full Photos access and may need Full Disk Access.
 
 ## Wire into Claude Code / Claude Desktop
 
@@ -114,7 +134,9 @@ macOS will prompt for these the first time each tool group is used:
 4. **Photos** — *System Settings → Privacy & Security → Photos*
 5. **Automation → Messages** — granted on first `messages_send`
 6. **Full Disk Access** — must be granted *manually* to the parent process
-   (Terminal, iTerm, Claude Desktop) to read `~/Library/Messages/chat.db`
+   (Terminal, iTerm, Claude Desktop) to read `~/Library/Messages/chat.db`.
+   People/pet discovery and search may also need this to read Photos' local
+   database and library preferences.
 
 ## How it works
 
@@ -123,6 +145,7 @@ macOS will prompt for these the first time each tool group is used:
 | Calendar / Reminders | `EventKit` (`EKEventStore`, `requestFullAccessToEvents` / `requestFullAccessToReminders`) |
 | Contacts | `Contacts` framework (`CNContactStore`) |
 | Photos | `PhotoKit` (`PHPhotoLibrary`, `PHAsset`, `PHImageManager`); thumbnails JPEG-encoded via `NSBitmapImageRep` |
+| Photos people / pets | Read-only `SQLite3` queries of system-library identities and face associations, followed by PhotoKit asset filtering |
 | Messages reading | Direct `SQLite3` access to `~/Library/Messages/chat.db` |
 | `attributedBody` decoding | Hand-written typedstream scanner — modern Messages stores body text in an `NSArchiver`-format BLOB, not in the `text` column |
 | Messages sending | `NSAppleScript` driving Messages.app (Apple provides no public Swift API for sending iMessages) |
@@ -130,6 +153,10 @@ macOS will prompt for these the first time each tool group is used:
 
 ## Known limitations
 
+- People/pet search relies on Photos' undocumented database schema. Required
+  tables and columns are checked before querying; unsupported schemas produce
+  an explicit error. Hidden and deleted assets are excluded from identity
+  discovery and search.
 - `messages_search` only matches the `text` column. Messages whose body lives
   solely in `attributedBody` are not matched. Decoding every blob on search
   would be costly.

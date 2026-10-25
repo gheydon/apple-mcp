@@ -4,6 +4,7 @@ import Photos
 
 enum PhotosError: Error, CustomStringConvertible {
     case accessDenied
+    case fullAccessRequired
     case assetNotFound(String)
     case albumNotFound(String)
     case exportFailed(String)
@@ -13,6 +14,8 @@ enum PhotosError: Error, CustomStringConvertible {
         switch self {
         case .accessDenied:
             return "Photos access denied. Grant access in System Settings → Privacy & Security → Photos."
+        case .fullAccessRequired:
+            return "People/pet search requires full Photos access; limited access cannot expose library-wide identities. Grant full access in System Settings → Privacy & Security → Photos."
         case .assetNotFound(let s): return "Photo not found: \(s)"
         case .albumNotFound(let s): return "Album not found: \(s)"
         case .exportFailed(let s): return "Export failed: \(s)"
@@ -150,8 +153,18 @@ enum PhotosService {
                        before: Date?,
                        favoritesOnly: Bool,
                        mediaType: String?,
+                       person: String?,
+                       pet: String?,
                        limit: Int) async throws -> [[String: Any]] {
-        try await requestAccess()
+        let identityUUIDs: Set<String>?
+        if person != nil || pet != nil {
+            try await requestIdentityAccess()
+            let database = try PhotosIdentityDB(databaseURL: PhotosIdentityDB.systemDatabaseURL())
+            identityUUIDs = try database.assetUUIDs(person: person, pet: pet)
+        } else {
+            try await requestAccess()
+            identityUUIDs = nil
+        }
 
         var predicates: [NSPredicate] = []
         if let d = after {
@@ -178,7 +191,7 @@ enum PhotosService {
 
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        options.fetchLimit = limit
+        options.fetchLimit = identityUUIDs == nil ? limit : 0
         if !predicates.isEmpty {
             options.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
         }
@@ -197,11 +210,31 @@ enum PhotosService {
             assets = PHAsset.fetchAssets(with: options)
         }
 
+        if identityUUIDs?.isEmpty == true { return [] }
+
         var rows: [PhotoRow] = []
-        assets.enumerateObjects { asset, _, _ in
+        assets.enumerateObjects { asset, _, stop in
+            if let identityUUIDs {
+                let uuid = String(asset.localIdentifier.prefix(while: { $0 != "/" })).uppercased()
+                guard identityUUIDs.contains(uuid) else { return }
+            }
             rows.append(PhotoRow(asset))
+            if rows.count == limit { stop.pointee = true }
         }
         return rows.map { $0.toDictionary() }
+    }
+
+    static func listIdentities(kind: PhotoIdentityKind, query: String?, limit: Int) async throws -> [[String: Any]] {
+        try await requestIdentityAccess()
+        let database = try PhotosIdentityDB(databaseURL: PhotosIdentityDB.systemDatabaseURL())
+        return try database.list(kind: kind, query: query, limit: limit).map { $0.toDictionary() }
+    }
+
+    private static func requestIdentityAccess() async throws {
+        try await requestAccess()
+        guard PHPhotoLibrary.authorizationStatus(for: .readWrite) == .authorized else {
+            throw PhotosError.fullAccessRequired
+        }
     }
 
     static func export(id: String, outputPath: String) async throws -> [String: Any] {

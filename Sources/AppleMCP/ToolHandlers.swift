@@ -64,13 +64,28 @@ enum ToolHandlers {
                 let albums = try await PhotosService.listAlbums()
                 return JSONHelpers.jsonResult(albums)
 
+            case "photos_list_people", "photos_list_pets":
+                let identities = try await PhotosService.listIdentities(
+                    kind: name == "photos_list_people" ? .person : .pet,
+                    query: JSONHelpers.string(arguments, "query"),
+                    limit: JSONHelpers.int(arguments, "limit") ?? 100
+                )
+                return JSONHelpers.jsonResult(identities)
+
             case "photos_search":
+                let person = JSONHelpers.string(arguments, "person")
+                let pet = JSONHelpers.string(arguments, "pet")
+                if [person, pet].contains(where: { $0?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true }) {
+                    return JSONHelpers.errorResult("person and pet must be non-empty names or identity IDs")
+                }
                 let results = try await PhotosService.search(
                     albumId: JSONHelpers.string(arguments, "album_id"),
                     after: JSONHelpers.date(arguments, "after"),
                     before: JSONHelpers.date(arguments, "before"),
                     favoritesOnly: JSONHelpers.bool(arguments, "favorites_only") ?? false,
                     mediaType: JSONHelpers.string(arguments, "media_type"),
+                    person: person,
+                    pet: pet,
                     limit: JSONHelpers.int(arguments, "limit") ?? 50
                 )
                 return JSONHelpers.jsonResult(results)
